@@ -1,0 +1,9 @@
+{
+  "profile_name": "acme-engineering",
+  "description": "Acme Corp engineering team — SaaS product, weekly standups and design reviews",
+  "language": "en-US",
+  "source": "Read AI",
+  "speakers": ["Priya Sharma", "Marcus Chen", "Ava Johansson", "Tomás Rivera"],
+  "domain_context": "B2B SaaS platform. Stack: React frontend, Python backend, PostgreSQL, Docker, deployed on AWS. Uses Jira for tickets, Confluence for docs, Figma for design. AI features powered by Claude.",
+  "corrections_file": "corrections.json"
+}

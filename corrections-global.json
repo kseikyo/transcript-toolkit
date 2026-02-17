@@ -1,0 +1,147 @@
+{
+  "version": "1.0",
+  "profile": "global",
+  "last_updated": "2026-02-17T00:00:00Z",
+  "corrections": [
+    {
+      "asr": "javascript",
+      "correct": "JavaScript",
+      "confidence": "high",
+      "category": "concept",
+      "notes": "Programming language"
+    },
+    {
+      "asr": "typescript",
+      "correct": "TypeScript",
+      "confidence": "high",
+      "category": "concept",
+      "notes": "Typed superset of JavaScript"
+    },
+    {
+      "asr": "ci cd",
+      "correct": "CI/CD",
+      "confidence": "high",
+      "category": "concept",
+      "notes": "Continuous Integration / Continuous Deployment"
+    },
+    {
+      "asr": "cicd",
+      "correct": "CI/CD",
+      "confidence": "high",
+      "category": "concept",
+      "notes": "Continuous Integration / Continuous Deployment"
+    },
+    {
+      "asr": "apis",
+      "correct": "APIs",
+      "confidence": "high",
+      "category": "concept",
+      "notes": "Plural of API"
+    },
+    {
+      "asr": "api",
+      "correct": "API",
+      "confidence": "high",
+      "category": "concept",
+      "notes": "Application Programming Interface"
+    },
+    {
+      "asr": "sdk",
+      "correct": "SDK",
+      "confidence": "high",
+      "category": "concept",
+      "notes": "Software Development Kit"
+    },
+    {
+      "asr": "cli",
+      "correct": "CLI",
+      "confidence": "high",
+      "category": "concept",
+      "notes": "Command Line Interface"
+    },
+    {
+      "asr": "kubernetes",
+      "correct": "Kubernetes",
+      "confidence": "high",
+      "category": "tool",
+      "notes": "Container orchestration platform"
+    },
+    {
+      "asr": "postgresql",
+      "correct": "PostgreSQL",
+      "confidence": "high",
+      "category": "tool",
+      "notes": "Relational database"
+    },
+    {
+      "asr": "github",
+      "correct": "GitHub",
+      "confidence": "high",
+      "category": "tool",
+      "notes": "Source code hosting platform"
+    },
+    {
+      "asr": "postgres",
+      "correct": "PostgreSQL",
+      "confidence": "high",
+      "category": "tool",
+      "notes": "Common short name"
+    },
+    {
+      "asr": "openai",
+      "correct": "OpenAI",
+      "confidence": "high",
+      "category": "tool",
+      "notes": "AI research company"
+    },
+    {
+      "asr": "open ai",
+      "correct": "OpenAI",
+      "confidence": "high",
+      "category": "tool",
+      "notes": "ASR sometimes splits into two words"
+    },
+    {
+      "asr": "anthropic",
+      "correct": "Anthropic",
+      "confidence": "high",
+      "category": "tool",
+      "notes": "AI safety company"
+    },
+    {
+      "asr": "figma",
+      "correct": "Figma",
+      "confidence": "high",
+      "category": "tool",
+      "notes": "Design tool"
+    },
+    {
+      "asr": "notion",
+      "correct": "Notion",
+      "confidence": "high",
+      "category": "tool",
+      "notes": "Productivity and wiki tool"
+    },
+    {
+      "asr": "slack",
+      "correct": "Slack",
+      "confidence": "high",
+      "category": "tool",
+      "notes": "Team messaging platform"
+    },
+    {
+      "asr": "mysql",
+      "correct": "MySQL",
+      "confidence": "high",
+      "category": "tool",
+      "notes": "Relational database"
+    },
+    {
+      "asr": "zoom",
+      "correct": "Zoom",
+      "confidence": "high",
+      "category": "tool",
+      "notes": "Video conferencing platform"
+    }
+  ]
+}

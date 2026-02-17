@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "profile": "acme-engineering",
+  "last_updated": "2026-02-17T00:00:00Z",
+  "corrections": [
+    {"asr": "jira", "correct": "Jira", "confidence": "high", "category": "tool", "notes": "Project tracking tool"},
+    {"asr": "confluence", "correct": "Confluence", "confidence": "high", "category": "tool", "notes": "Team wiki and documentation"},
+    {"asr": "react", "correct": "React", "confidence": "high", "category": "tool", "notes": "Frontend framework"},
+    {"asr": "docker", "correct": "Docker", "confidence": "high", "category": "tool", "notes": "Container platform"},
+    {"asr": "cloud", "correct": "Claude", "confidence": "medium", "category": "tool", "notes": "ASR frequently transcribes Claude as Cloud. Only replace in AI context.", "context": {"strategy": "both", "neighbors": ["AI", "model", "prompt", "Anthropic", "LLM", "assistant", "chat"], "exclude_neighbors": ["AWS", "GCP", "Azure", "infrastructure", "server", "hosting", "S3"]}},
+    {"asr": "pre-a", "correct": "Priya", "confidence": "medium", "category": "person", "notes": "ASR mishears Priya Sharma's first name"},
+    {"asr": "Thomas", "correct": "Tomás", "confidence": "low", "category": "person", "notes": "ASR anglicizes Tomás Rivera's name. Low confidence.", "context": {"strategy": "requires_neighbor", "neighbors": ["Rivera", "Tomás", "frontend", "design"]}},
+    {"asr": "sprint retro", "correct": "sprint retrospective", "confidence": "medium", "category": "concept", "notes": "Team uses full term in written docs"}
+  ]
+}

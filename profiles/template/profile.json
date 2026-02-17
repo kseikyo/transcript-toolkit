@@ -1,0 +1,16 @@
+{
+  "_comment_profile_name": "Short slug, e.g. 'my-project'",
+  "profile_name": "",
+  "_comment_description": "One sentence about the team/project",
+  "description": "",
+  "_comment_language": "BCP 47 code, e.g. 'en-US', 'pt-BR'",
+  "language": "en-US",
+  "_comment_source": "Transcript source: 'Read AI', 'Otter.ai', 'Zoom', 'Whisper'",
+  "source": "",
+  "_comment_speakers": "List of known speaker full names",
+  "speakers": [],
+  "_comment_domain_context": "Paragraph describing team domain, tools, terminology",
+  "domain_context": "",
+  "_comment_corrections_file": "Auto-filled: corrections.json",
+  "corrections_file": "corrections.json"
+}
