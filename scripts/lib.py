@@ -231,7 +231,11 @@ def find_matches(text: str, asr_pattern: str) -> list[tuple[int, int, str]]:
         return []
 
     escaped = re.escape(asr_pattern)
-    pattern = rf"\b{escaped}\b"
+    # Adaptive boundary: \b only works at word↔non-word transitions.
+    # For patterns starting/ending with non-word chars, use lookaround instead.
+    left = r"\b" if re.match(r"\w", asr_pattern) else r"(?<!\w)"
+    right = r"\b" if re.search(r"\w$", asr_pattern) else r"(?!\w)"
+    pattern = f"{left}{escaped}{right}"
     return [
         (m.start(), m.end(), m.group())
         for m in re.finditer(pattern, text, re.IGNORECASE | re.UNICODE)
