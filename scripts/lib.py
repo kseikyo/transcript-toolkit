@@ -160,6 +160,9 @@ def get_word_window(
     return [w for i, w in enumerate(words[start:end], start=start) if i != center_index]
 
 
+VALID_STRATEGIES = {"always", "requires_neighbor", "exclude_neighbor", "both"}
+
+
 def evaluate_context(window_words: list[str], context_rule: dict) -> bool:
     """Evaluate whether a match should be replaced based on context rule.
 
@@ -178,6 +181,10 @@ def evaluate_context(window_words: list[str], context_rule: dict) -> bool:
         True if replacement should proceed
     """
     strategy = context_rule.get("strategy", "always")
+    if strategy not in VALID_STRATEGIES:
+        raise ValueError(
+            f"Unknown context strategy: '{strategy}'. Valid: {VALID_STRATEGIES}"
+        )
 
     if strategy == "always":
         return True
