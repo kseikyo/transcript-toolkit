@@ -131,6 +131,9 @@ def restore_case(original: str, replacement: str) -> str:
         # mangling things like "OpenAI" via str.capitalize()
         if " " in original:
             return replacement
+        # Preserve intentional internal caps (GitHub, OpenAI, etc.)
+        if any(c.isupper() for c in replacement[1:]):
+            return replacement
         return replacement.capitalize()
 
     if original.islower():

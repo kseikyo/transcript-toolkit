@@ -41,3 +41,19 @@ def test_find_matches_special_char_boundaries(pattern, text, expected_count):
     """Word boundary must work for patterns with non-word edge chars."""
     matches = lib.find_matches(text, pattern)
     assert len(matches) == expected_count
+
+
+@pytest.mark.parametrize(
+    "original,replacement,expected",
+    [
+        ("Github", "GitHub", "GitHub"),  # Internal caps preserved
+        ("Openai", "OpenAI", "OpenAI"),  # Internal caps preserved
+        ("Cloud", "claude", "Claude"),  # Plain word → capitalize still works
+        ("Cloud", "Claude", "Claude"),  # Already correct → pass through
+        ("GITHUB", "GitHub", "GITHUB"),  # All-caps → all-caps (unchanged)
+        ("github", "GitHub", "github"),  # Lower → lower (unchanged)
+    ],
+)
+def test_restore_case_preserves_intentional_caps(original, replacement, expected):
+    """Single-word title case must not destroy intentional internal capitals."""
+    assert lib.restore_case(original, replacement) == expected

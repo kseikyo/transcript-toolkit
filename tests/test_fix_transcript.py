@@ -140,7 +140,7 @@ def test_context_both_fails_exclusion():
     "original,expected",
     [
         ("GITHUB", "GITHUB"),  # ALL CAPS → ALL CAPS
-        ("Github", "Github"),  # Title → capitalize() of replacement
+        ("Github", "GitHub"),  # Title → preserve internal caps
         ("github", "github"),  # lower → lower (proper noun keeps own casing)
         ("gitHub", "GitHub"),  # mixed → replacement's own
     ],
