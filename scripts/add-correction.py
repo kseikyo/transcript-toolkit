@@ -176,7 +176,7 @@ def main() -> None:
     data["last_updated"] = datetime.now(timezone.utc).isoformat()
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    lib.atomic_write_text(target, json.dumps(data, indent=2) + "\n")
     print(f"Added to {target}")
 
 

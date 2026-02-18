@@ -217,7 +217,7 @@ def write_audit_log(
         output += "\n"
 
     if log_path:
-        Path(log_path).write_text(output, encoding="utf-8")
+        lib.atomic_write_text(Path(log_path), output)
     else:
         print(output, file=sys.stderr, end="")
 

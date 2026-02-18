@@ -3,8 +3,29 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import tempfile
 from pathlib import Path
+
+
+def atomic_write_text(path: Path, content: str) -> None:
+    """Write text atomically via temp file + os.replace."""
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        os.write(fd, content.encode("utf-8"))
+        os.close(fd)
+        os.replace(tmp, str(path))
+    except BaseException:
+        try:
+            os.close(fd)
+        except:
+            pass
+        try:
+            os.unlink(tmp)
+        except:
+            pass
+        raise
 
 
 def load_corrections(path: Path) -> dict:

@@ -57,3 +57,34 @@ def test_find_matches_special_char_boundaries(pattern, text, expected_count):
 def test_restore_case_preserves_intentional_caps(original, replacement, expected):
     """Single-word title case must not destroy intentional internal capitals."""
     assert lib.restore_case(original, replacement) == expected
+
+
+def test_atomic_write_text_writes_content(tmp_path):
+    """atomic_write_text writes content correctly."""
+    target = tmp_path / "test.json"
+    lib.atomic_write_text(target, '{"key": "value"}\n')
+    assert target.read_text() == '{"key": "value"}\n'
+
+
+def test_atomic_write_text_no_temp_leak_on_failure(tmp_path, monkeypatch):
+    """On failure, temp file must be cleaned up."""
+    import os
+
+    target = tmp_path / "test.json"
+
+    def failing_replace(*a, **kw):
+        raise OSError("simulated failure")
+
+    monkeypatch.setattr("os.replace", failing_replace)
+    with pytest.raises(OSError, match="simulated failure"):
+        lib.atomic_write_text(target, "content")
+    remaining = list(tmp_path.glob("*.tmp"))
+    assert remaining == []
+
+
+def test_atomic_write_text_overwrites_existing(tmp_path):
+    """atomic_write_text overwrites existing file atomically."""
+    target = tmp_path / "test.json"
+    target.write_text("old content")
+    lib.atomic_write_text(target, "new content")
+    assert target.read_text() == "new content"
