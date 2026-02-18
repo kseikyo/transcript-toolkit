@@ -220,3 +220,18 @@ def test_dry_run_no_output(tmp_path):
     # Processing succeeded but output not written (dry-run behavior)
     assert result is not None
     assert not output.exists()  # File not created in dry-run mode
+
+
+# --- Test 12: No cascading between corrections ---
+
+
+def test_no_cascading_replacements():
+    """Correction A's output must NOT become input for correction B."""
+    corrections = [
+        {"asr": "retro", "correct": "retrospective", "confidence": "high"},
+        {"asr": "retrospective", "correct": "RETRO_REPLACED", "confidence": "high"},
+    ]
+    text = "the retro meeting"
+    result, replacements, _ = process_transcript(text, corrections)
+    assert "retrospective" in result
+    assert "RETRO_REPLACED" not in result

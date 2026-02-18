@@ -48,38 +48,31 @@ def process_transcript(
     replacements_log: list[dict] = []
     skipped_log: list[dict] = []
 
-    for corr in filtered:
-        asr = corr["asr"]
-        correct = corr["correct"]
-        context_rule = corr.get("context")
+    for line_idx in range(len(lines)):
+        line = lines[line_idx]
+        tokens = _tokenize_with_positions(line)
+        word_list = [t[0] for t in tokens]
+        # Collect all candidate matches against the ORIGINAL line
+        all_matches: list[tuple[int, int, str, str, dict]] = []
 
-        for line_idx in range(len(lines)):
-            line = lines[line_idx]
+        for corr in filtered:
+            asr = corr["asr"]
+            correct = corr["correct"]
+            context_rule = corr.get("context")
+
             matches = lib.find_matches(line, asr)
             if not matches:
                 continue
 
-            for start, end, matched_text in reversed(matches):  # right-to-left
-                tokens = _tokenize_with_positions(line)
+            for start, end, matched_text in matches:
                 word_idx = _find_word_index(tokens, start, end)
-                word_list = [t[0] for t in tokens]
-
                 window = (
                     lib.get_word_window(word_list, word_idx) if word_idx >= 0 else []
                 )
 
                 if context_rule is None or lib.evaluate_context(window, context_rule):
                     replacement = lib.restore_case(matched_text, correct)
-                    line = line[:start] + replacement + line[end:]
-                    replacements_log.append(
-                        {
-                            "line": line_idx + 1,
-                            "original": matched_text,
-                            "replacement": replacement,
-                            "reason": f"matched '{asr}' -> '{correct}'",
-                            "action": "replaced",
-                        }
-                    )
+                    all_matches.append((start, end, replacement, matched_text, corr))
                 else:
                     strategy = context_rule.get("strategy", "always")
                     skipped_log.append(
@@ -89,10 +82,34 @@ def process_transcript(
                             "replacement": None,
                             "reason": f"context rule: {strategy} — condition not met",
                             "action": "skipped",
+                            "char_start": start,
+                            "char_end": end,
                         }
                     )
 
-            lines[line_idx] = line
+        # Select non-overlapping matches — longest span wins
+        all_matches.sort(key=lambda x: (-(x[1] - x[0]), x[0]))
+        selected: list[tuple[int, int, str, str, dict]] = []
+        for match in all_matches:
+            s, e = match[0], match[1]
+            if not any(ss < e and s < se for ss, se, *_ in selected):
+                selected.append(match)
+
+        # Apply right-to-left to preserve character offsets
+        selected.sort(key=lambda x: -x[0])
+        for start, end, replacement, matched_text, corr in selected:
+            line = line[:start] + replacement + line[end:]
+            replacements_log.append(
+                {
+                    "line": line_idx + 1,
+                    "original": matched_text,
+                    "replacement": replacement,
+                    "reason": f"matched '{corr['asr']}' -> '{corr['correct']}'",
+                    "action": "replaced",
+                }
+            )
+
+        lines[line_idx] = line
 
     skipped_by_line: dict[int, list[dict]] = {}
     for entry in skipped_log:
