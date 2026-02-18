@@ -117,15 +117,13 @@ def process_transcript(
 
     for ln in sorted(skipped_by_line):
         line = lines[ln - 1]
-        entries = skipped_by_line[ln]
-        for entry in reversed(entries):
-            word = entry["original"]
-            occurrences = list(re.finditer(re.escape(word), line, re.IGNORECASE))
-            if occurrences:
-                m = occurrences[-1]
-                flag = f' [unclear: "{word}" \u2192 ?]'
-                line = line[: m.end()] + flag + line[m.end() :]
-                entry["action"] = "flagged"
+        # Sort by char_end descending so insertions don't shift earlier positions
+        entries = sorted(skipped_by_line[ln], key=lambda e: -e.get("char_end", 0))
+        for entry in entries:
+            pos = entry["char_end"]
+            flag = f' [unclear: "{entry["original"]}" \u2192 ?]'
+            line = line[:pos] + flag + line[pos:]
+            entry["action"] = "flagged"
         lines[ln - 1] = line
 
     return "\n".join(lines), replacements_log, skipped_log

@@ -235,3 +235,36 @@ def test_no_cascading_replacements():
     result, replacements, _ = process_transcript(text, corrections)
     assert "retrospective" in result
     assert "RETRO_REPLACED" not in result
+
+
+# --- Test 13: Multi-skip flag positions ---
+
+
+def test_multi_skip_flag_positions():
+    """Two skipped words on same line must both get [unclear] flags without corruption.
+
+    Bug: re.finditer re-scans the *modified* line after each flag insertion.
+    The word "clear" appears inside "[unclear:" flag text, so re-scanning
+    picks the wrong match and corrupts the output.
+    """
+    corrections = [
+        {
+            "asr": "clear",
+            "correct": "Clear-Fixed",
+            "confidence": "high",
+            "context": {"strategy": "requires_neighbor", "neighbors": ["missing_word"]},
+        },
+        {
+            "asr": "fuzzy",
+            "correct": "Fuzzy-Fixed",
+            "confidence": "high",
+            "context": {"strategy": "requires_neighbor", "neighbors": ["missing_word"]},
+        },
+    ]
+    text = "handle clear and fuzzy results"
+    result, _, skipped = process_transcript(text, corrections)
+    assert len(skipped) == 2
+    assert '[unclear: "clear"' in result
+    assert '[unclear: "fuzzy"' in result
+    # Both flags present, neither corrupted
+    assert result.count("[unclear:") == 2
