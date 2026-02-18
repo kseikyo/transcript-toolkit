@@ -1,6 +1,27 @@
+---
+name: fix-transcript
+description: Correct ASR errors in meeting transcripts using deterministic dictionary matching and AI review. Use when fixing transcription mistakes, correcting names/terms, or cleaning up meeting notes.
+triggers:
+  - "fix transcript"
+  - "correct transcript"
+  - "fix transcription"
+  - "meeting transcript"
+  - "ASR errors"
+  - "transcription mistakes"
+  - "clean up transcript"
+  - "fix meeting notes"
+---
+
 # Fix Transcript
 
 Use this skill when the user wants to correct a meeting transcript.
+
+**TOOLKIT_ROOT**: Resolve at the start of each session. All commands below reference `$TOOLKIT_ROOT`.
+
+```bash
+# Resolves the toolkit install directory from the skill symlink
+TOOLKIT_ROOT="$(cd "$(dirname "$(readlink ~/.claude/skills/fix-transcript.md)")" && cd .. && pwd)"
+```
 
 ## Overview
 
@@ -22,12 +43,22 @@ Ask or determine:
 - Path to transcript file (.md or .txt)
 - Which profile to use (folder under profiles/)
 
-If no profile specified, use `profiles/acme-engineering` as example or ask user.
+If no profile specified, use `"$TOOLKIT_ROOT/profiles/acme-engineering"` as example or ask user.
+
+### Profile Resolution
+
+When determining the profile path:
+1. If user specifies an absolute path, use it directly
+2. Check if `./profiles/{name}/profile.json` exists in the current project directory
+3. If not found locally, use `$TOOLKIT_ROOT/profiles/{name}/`
+4. If neither exists, ask the user which profile to use
+
+The resolved path must be absolute in all subsequent commands.
 
 ### Step 2: Run Deterministic Correction
 
 ```bash
-uv run python scripts/fix-transcript.py {transcript} --profile {profile} --review ai --out {transcript}-fixed.md
+uv --directory "$TOOLKIT_ROOT" run python "$TOOLKIT_ROOT/scripts/fix-transcript.py" "${transcript}" --profile "${profile}" --review ai --out "${transcript}-fixed.md"
 ```
 
 This produces:
@@ -89,7 +120,7 @@ Build decisions array:
 Pipe your decisions JSON to ai-review.py:
 
 ```bash
-cat << 'DECISIONS' | uv run python scripts/ai-review.py --apply --update-dict --profile {profile}
+cat << 'DECISIONS' | uv --directory "$TOOLKIT_ROOT" run python "$TOOLKIT_ROOT/scripts/ai-review.py" --apply --update-dict --profile "${profile}"
 {"transcript_file": "...", "profile": "...", "decisions": [...]}
 DECISIONS
 ```
@@ -138,6 +169,7 @@ Write the result as `{meeting}-final.md` in the same folder as the original.
 - `--update-dict` — add confirmed corrections to dictionary
 - `--min-confidence` — filter decisions (default: medium)
 - `--profile` — profile path (for --update-dict)
+- `--out` — output file path
 
 ### add-correction.py
 - `--profile` or `--global` — target dictionary
@@ -152,13 +184,13 @@ Write the result as `{meeting}-final.md` in the same folder as the original.
 
 **Manual mode (no AI review):**
 ```bash
-uv run python scripts/fix-transcript.py meetings/standup.md --profile profiles/acme-engineering
+uv --directory "$TOOLKIT_ROOT" run python "$TOOLKIT_ROOT/scripts/fix-transcript.py" "${transcript}" --profile "${profile}"
 ```
 
 **With AI review (this skill):**
 ```bash
 # Run with --review ai to get payload
-uv run python scripts/fix-transcript.py meetings/standup.md --profile profiles/acme-engineering --review ai
+uv --directory "$TOOLKIT_ROOT" run python "$TOOLKIT_ROOT/scripts/fix-transcript.py" "${transcript}" --profile "${profile}" --review ai
 
 # Then apply decisions
 # (handled by this skill)
@@ -166,5 +198,10 @@ uv run python scripts/fix-transcript.py meetings/standup.md --profile profiles/a
 
 **Human review mode:**
 ```bash
-uv run python scripts/fix-transcript.py meetings/standup.md --profile profiles/acme-engineering --review human
+uv --directory "$TOOLKIT_ROOT" run python "$TOOLKIT_ROOT/scripts/fix-transcript.py" "${transcript}" --profile "${profile}" --review human
+```
+
+**Add a correction to dictionary:**
+```bash
+uv --directory "$TOOLKIT_ROOT" run python "$TOOLKIT_ROOT/scripts/add-correction.py" --profile "${profile}" --asr "cloud" --correct "Claude" --confidence high --category tool
 ```

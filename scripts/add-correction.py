@@ -147,7 +147,7 @@ def main() -> None:
     validate_entry(entry)
 
     if args.global_flag:
-        target = Path("corrections-global.json")
+        target = Path(__file__).resolve().parent.parent / "corrections-global.json"
     else:
         target = Path(args.profile) / "corrections.json"
 
