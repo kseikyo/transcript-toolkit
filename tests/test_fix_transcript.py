@@ -336,3 +336,30 @@ def test_report_flag_to_file(tmp_path):
     assert report_file.exists()
     content = report_file.read_text()
     assert "github" in content.lower() or "applied" in content.lower()
+
+
+# --- Test 16: Batch processing ---
+
+
+def test_batch_processes_multiple_files(tmp_path):
+    """Batch mode processes multiple files, produces *-fixed.md for each."""
+    (tmp_path / "a.md").write_text("Check the github repo.")
+    (tmp_path / "b.md").write_text("Use the api key.")
+    fix_transcript = importlib.import_module("fix-transcript")
+    fix_transcript.main([str(tmp_path / "a.md"), str(tmp_path / "b.md")])
+    assert (tmp_path / "a-fixed.md").exists()
+    assert (tmp_path / "b-fixed.md").exists()
+    assert "GitHub" in (tmp_path / "a-fixed.md").read_text()
+    assert "API" in (tmp_path / "b-fixed.md").read_text()
+
+
+def test_batch_skips_missing_file(tmp_path, capsys):
+    """Missing file in batch → error logged, others still processed."""
+    (tmp_path / "a.md").write_text("Check the github repo.")
+    fix_transcript = importlib.import_module("fix-transcript")
+    fix_transcript.main([
+        str(tmp_path / "a.md"), str(tmp_path / "missing.md"),
+    ])
+    assert (tmp_path / "a-fixed.md").exists()
+    captured = capsys.readouterr()
+    assert "missing.md" in captured.err

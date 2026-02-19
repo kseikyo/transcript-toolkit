@@ -289,9 +289,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Apply deterministic corrections to meeting transcripts.",
     )
-    p.add_argument("transcript", help="Path to raw transcript file (.md or .txt)")
+    p.add_argument(
+        "transcript",
+        nargs="+",
+        help="Path(s) to raw transcript file(s) (.md or .txt)",
+    )
     p.add_argument("--profile", help="Path to profile folder")
-    p.add_argument("--out", help="Output file path (default: <input>-fixed.md)")
+    p.add_argument("--out", help="Output file path (single file only)")
     p.add_argument(
         "--dry-run",
         action="store_true",
@@ -334,10 +338,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     args = p.parse_args(argv)
 
-    if args.out is None:
-        t = Path(args.transcript)
-        args.out = str(t.parent / (t.stem + "-fixed.md"))
-
     return args
 
 
@@ -365,68 +365,81 @@ def main(argv: list[str] | None = None) -> None:
         print("No conflicts found.", file=sys.stderr)
         return
 
-    text = Path(args.transcript).read_text(encoding="utf-8")
+    all_replacements: list[dict] = []
+    all_skipped: list[dict] = []
 
-    # Strip fillers before correction if requested
-    if args.strip_fillers and profile:
-        fillers = profile.get("fillers", [])
-        if fillers:
-            text = lib.remove_fillers(text, fillers)
+    for transcript_path in args.transcript:
+        t = Path(transcript_path)
+        if not t.exists():
+            print(f"Error: {transcript_path} not found, skipping", file=sys.stderr)
+            continue
 
-    if args.review == "ai":
-        _, _, skipped = process_transcript(text, corrections, args.min_confidence)
-        payload = build_ai_payload(args.transcript, profile, skipped, text)
-        print(json.dumps(payload, indent=2))
-        return
+        out_path = args.out if args.out else str(t.parent / (t.stem + "-fixed.md"))
+        text = t.read_text(encoding="utf-8")
 
-    corrected, replacements, skipped = process_transcript(
-        text,
-        corrections,
-        args.min_confidence,
-    )
+        # Strip fillers before correction if requested
+        if args.strip_fillers and profile:
+            fillers = profile.get("fillers", [])
+            if fillers:
+                text = lib.remove_fillers(text, fillers)
 
-    # Fuzzy suggestions on unmatched words
-    suggestions_log: list[dict] = []
-    if args.suggest:
-        matched_words = {e["original"].lower() for e in replacements + skipped}
-        seen_words: set[str] = set()
-        for word_match in re.finditer(r"\b[a-zA-Z]{3,}\b", corrected):
-            word = word_match.group()
-            wl = word.lower()
-            if wl in seen_words or wl in matched_words:
-                continue
-            seen_words.add(wl)
-            suggestions = lib.find_fuzzy_suggestions(word, corrections)
-            for s in suggestions:
-                suggestions_log.append({
-                    "original": word,
-                    "suggested_asr": s["asr"],
-                    "suggested_correct": s["correct"],
-                    "score": s["score"],
-                    "action": "suggested",
-                })
+        if args.review == "ai":
+            _, _, skipped = process_transcript(text, corrections, args.min_confidence)
+            payload = build_ai_payload(str(t), profile, skipped, text)
+            print(json.dumps(payload, indent=2))
+            continue
 
-    # Apply redaction after corrections if requested
-    if args.redact and profile:
-        redaction_rules = profile.get("redaction")
-        if redaction_rules:
-            corrected = lib.apply_redaction(corrected, redaction_rules)
+        corrected, replacements, skipped = process_transcript(
+            text,
+            corrections,
+            args.min_confidence,
+        )
 
-    if args.review == "human":
-        interactive_review(skipped, corrected.split("\n"))
+        # Fuzzy suggestions on unmatched words
+        suggestions_log: list[dict] = []
+        if args.suggest:
+            matched_words = {e["original"].lower() for e in replacements + skipped}
+            seen_words: set[str] = set()
+            for word_match in re.finditer(r"\b[a-zA-Z]{3,}\b", corrected):
+                word = word_match.group()
+                wl = word.lower()
+                if wl in seen_words or wl in matched_words:
+                    continue
+                seen_words.add(wl)
+                suggestions = lib.find_fuzzy_suggestions(word, corrections)
+                for s in suggestions:
+                    suggestions_log.append({
+                        "original": word,
+                        "suggested_asr": s["asr"],
+                        "suggested_correct": s["correct"],
+                        "score": s["score"],
+                        "action": "suggested",
+                    })
 
-    if not args.dry_run:
-        Path(args.out).write_text(corrected, encoding="utf-8")
+        # Apply redaction after corrections if requested
+        if args.redact and profile:
+            redaction_rules = profile.get("redaction")
+            if redaction_rules:
+                corrected = lib.apply_redaction(corrected, redaction_rules)
+
+        if args.review == "human":
+            interactive_review(skipped, corrected.split("\n"))
+
+        if not args.dry_run:
+            Path(out_path).write_text(corrected, encoding="utf-8")
+
+        all_replacements.extend(replacements + suggestions_log)
+        all_skipped.extend(skipped)
 
     # Report
-    if args.report:
-        report = build_report(replacements + suggestions_log, skipped)
+    if args.report and (all_replacements or all_skipped):
+        report = build_report(all_replacements, all_skipped)
         if isinstance(args.report, str):
             Path(args.report).write_text(report, encoding="utf-8")
         else:
             print(report, file=sys.stderr)
 
-    write_audit_log(replacements + suggestions_log, skipped, args.log)
+    write_audit_log(all_replacements, all_skipped, args.log)
 
 
 if __name__ == "__main__":
