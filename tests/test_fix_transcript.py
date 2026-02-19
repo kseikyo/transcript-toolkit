@@ -306,3 +306,33 @@ def test_flag_position_after_replacement_shift():
     assert flag_pos > baz_pos, (
         f"Flag at {flag_pos} should be after 'baz' at {baz_pos}. Got: {result!r}"
     )
+
+
+# --- Test 15: --report flag ---
+
+
+def test_report_flag_outputs_summary(tmp_path, capsys):
+    """--report flag outputs correction summary to stderr."""
+    transcript = tmp_path / "input.md"
+    transcript.write_text("Check the github api.")
+    fix_transcript = importlib.import_module("fix-transcript")
+    fix_transcript.main([
+        str(transcript), "--out", str(tmp_path / "out.md"), "--report",
+    ])
+    captured = capsys.readouterr()
+    assert "corrections" in captured.err.lower() or "applied" in captured.err.lower()
+
+
+def test_report_flag_to_file(tmp_path):
+    """--report <path> writes summary to file."""
+    transcript = tmp_path / "input.md"
+    transcript.write_text("Check the github api.")
+    report_file = tmp_path / "report.txt"
+    fix_transcript = importlib.import_module("fix-transcript")
+    fix_transcript.main([
+        str(transcript), "--out", str(tmp_path / "out.md"),
+        "--report", str(report_file),
+    ])
+    assert report_file.exists()
+    content = report_file.read_text()
+    assert "github" in content.lower() or "applied" in content.lower()

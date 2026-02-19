@@ -236,6 +236,37 @@ def interactive_review(skipped: list[dict], lines: list[str]) -> list[dict]:
     return decisions
 
 
+
+def build_report(replacements: list[dict], skipped: list[dict]) -> str:
+    """Build human-readable correction summary.
+
+    Args:
+        replacements: List of replacement log entries
+        skipped: List of skipped/flagged log entries
+
+    Returns:
+        Formatted report string
+    """
+    lines_modified = len({e["line"] for e in replacements})
+    # Count top corrections by frequency
+    from collections import Counter
+    freq: Counter[str] = Counter()
+    for e in replacements:
+        key = e.get("reason", "unknown")
+        freq[key] += 1
+    top = freq.most_common(5)
+
+    parts = [
+        f"Applied {len(replacements)} corrections across {lines_modified} lines.",
+        f"{len(skipped)} items flagged unclear.",
+    ]
+    if top:
+        parts.append("Top corrections:")
+        for reason, count in top:
+            parts.append(f"  {reason} ({count}x)")
+    return "\n".join(parts)
+
+
 def write_audit_log(
     replacements: list[dict],
     skipped: list[dict],
@@ -294,6 +325,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Run fuzzy matching on unmatched words and log suggestions",
     )
+    p.add_argument(
+        "--report",
+        nargs="?",
+        const=True,
+        default=False,
+        help="Output correction summary (stderr or to file path)",
+    )
     args = p.parse_args(argv)
 
     if args.out is None:
@@ -350,9 +388,7 @@ def main(argv: list[str] | None = None) -> None:
     # Fuzzy suggestions on unmatched words
     suggestions_log: list[dict] = []
     if args.suggest:
-        # Collect words that were matched (replaced or skipped)
         matched_words = {e["original"].lower() for e in replacements + skipped}
-        # Check each unique word in the corrected text
         seen_words: set[str] = set()
         for word_match in re.finditer(r"\b[a-zA-Z]{3,}\b", corrected):
             word = word_match.group()
@@ -381,6 +417,14 @@ def main(argv: list[str] | None = None) -> None:
 
     if not args.dry_run:
         Path(args.out).write_text(corrected, encoding="utf-8")
+
+    # Report
+    if args.report:
+        report = build_report(replacements + suggestions_log, skipped)
+        if isinstance(args.report, str):
+            Path(args.report).write_text(report, encoding="utf-8")
+        else:
+            print(report, file=sys.stderr)
 
     write_audit_log(replacements + suggestions_log, skipped, args.log)
 
