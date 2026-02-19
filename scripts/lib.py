@@ -131,7 +131,9 @@ def restore_case(original: str, replacement: str) -> str:
     - original.isupper() -> replacement.upper()          # "GITHUB" -> "GITHUB"
     - original.istitle() -> replacement.capitalize()     # "Github" -> "Github"
       BUT: for multi-word like "Open Ai", use replacement's own casing
-    - original.islower() -> replacement.lower()          # "github" -> "github"
+    - original.islower():
+        - if replacement has intentional casing → preserve it  # "github" -> "GitHub"
+        - else → replacement.lower()                           # "hello" -> "world"
     - else -> replacement as-is                          # mixed case
 
     Args:
@@ -158,6 +160,9 @@ def restore_case(original: str, replacement: str) -> str:
         return replacement.capitalize()
 
     if original.islower():
+        # Preserve intentional casing in target (CLAUDE.md, GitHub, Opus)
+        if any(c.isupper() for c in replacement):
+            return replacement
         return replacement.lower()
 
     return replacement

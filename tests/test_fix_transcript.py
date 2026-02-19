@@ -141,7 +141,7 @@ def test_context_both_fails_exclusion():
     [
         ("GITHUB", "GITHUB"),  # ALL CAPS → ALL CAPS
         ("Github", "GitHub"),  # Title → preserve internal caps
-        ("github", "github"),  # lower → lower (proper noun keeps own casing)
+        ("github", "GitHub"),  # lower + intentional caps target → preserve target
         ("gitHub", "GitHub"),  # mixed → replacement's own
     ],
 )

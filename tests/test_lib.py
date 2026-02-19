@@ -51,7 +51,13 @@ def test_find_matches_special_char_boundaries(pattern, text, expected_count):
         ("Cloud", "claude", "Claude"),  # Plain word → capitalize still works
         ("Cloud", "Claude", "Claude"),  # Already correct → pass through
         ("GITHUB", "GitHub", "GITHUB"),  # All-caps → all-caps (unchanged)
-        ("github", "GitHub", "github"),  # Lower → lower (unchanged)
+        # T1: auto-infer target case when original is lowercase
+        ("github", "GitHub", "GitHub"),  # Target has intentional caps → preserve
+        ("cloud.md", "CLAUDE.md", "CLAUDE.md"),  # All-caps target → preserve
+        ("opus", "Opus", "Opus"),  # Title-case target → preserve
+        ("agents.md", "AGENTS.md", "AGENTS.md"),  # All-caps target → preserve
+        ("hello", "world", "world"),  # No intentional caps → lowercase
+        ("foo", "bar", "bar"),  # Both plain lowercase → lowercase
     ],
 )
 def test_restore_case_preserves_intentional_caps(original, replacement, expected):
