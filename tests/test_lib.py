@@ -94,3 +94,38 @@ def test_atomic_write_text_overwrites_existing(tmp_path):
     target.write_text("old content")
     lib.atomic_write_text(target, "new content")
     assert target.read_text() == "new content"
+
+
+# --- T3: Correction conflict detection ---
+
+
+def test_detect_conflicts_duplicate_asr_keys():
+    """Two corrections with same ASR key but different targets → conflict."""
+    corrections = [
+        {"asr": "api", "correct": "API", "confidence": "high"},
+        {"asr": "api", "correct": "Api", "confidence": "high"},
+    ]
+    conflicts = lib.detect_conflicts(corrections)
+    assert len(conflicts) >= 1
+    assert any(c["type"] == "duplicate" for c in conflicts)
+
+
+def test_detect_conflicts_phrase_overlap():
+    """Phrase correction containing a shorter correction's ASR → overlap warning."""
+    corrections = [
+        {"asr": "open ai", "correct": "OpenAI", "confidence": "high"},
+        {"asr": "ai", "correct": "AI", "confidence": "high"},
+    ]
+    conflicts = lib.detect_conflicts(corrections)
+    assert len(conflicts) >= 1
+    assert any(c["type"] == "overlap" for c in conflicts)
+
+
+def test_detect_conflicts_clean():
+    """No conflicts in a clean correction set."""
+    corrections = [
+        {"asr": "github", "correct": "GitHub", "confidence": "high"},
+        {"asr": "api", "correct": "API", "confidence": "high"},
+    ]
+    conflicts = lib.detect_conflicts(corrections)
+    assert conflicts == []

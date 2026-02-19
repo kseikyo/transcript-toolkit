@@ -270,6 +270,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument("--log", help="Audit log path (default: stderr)")
     p.add_argument("--review", choices=["human", "ai"], help="Review mode")
+    p.add_argument(
+        "--validate",
+        action="store_true",
+        help="Validate corrections for conflicts and exit",
+    )
     args = p.parse_args(argv)
 
     if args.out is None:
@@ -292,6 +297,16 @@ def main(argv: list[str] | None = None) -> None:
         profile_corr_list = profile_corr.get("corrections", [])
 
     corrections = lib.merge_corrections(global_corr["corrections"], profile_corr_list)
+
+    # Validate mode: check for conflicts and exit
+    if args.validate:
+        conflicts = lib.detect_conflicts(corrections)
+        if conflicts:
+            for c in conflicts:
+                print(f"[{c['type']}] {c['message']}", file=sys.stderr)
+            sys.exit(1)
+        print("No conflicts found.", file=sys.stderr)
+        return
 
     text = Path(args.transcript).read_text(encoding="utf-8")
 

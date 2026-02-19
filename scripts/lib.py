@@ -104,6 +104,56 @@ def merge_corrections(global_corr: list[dict], profile_corr: list[dict]) -> list
     )
 
 
+def detect_conflicts(corrections: list[dict]) -> list[dict]:
+    """Detect duplicate and overlapping corrections.
+
+    Checks for:
+    - Duplicate ASR keys with different targets
+    - Phrase corrections that contain shorter corrections as substrings
+
+    Args:
+        corrections: List of correction entries
+
+    Returns:
+        List of conflict descriptors with keys: type, message, entries
+    """
+    conflicts: list[dict] = []
+
+    # Check for duplicate ASR keys with different targets
+    seen: dict[str, dict] = {}
+    for entry in corrections:
+        key = entry["asr"].lower()
+        if key in seen and seen[key]["correct"] != entry["correct"]:
+            conflicts.append({
+                "type": "duplicate",
+                "message": (
+                    f"Duplicate ASR '{entry['asr']}': "
+                    f"'{seen[key]['correct']}' vs '{entry['correct']}'"
+                ),
+                "entries": [seen[key], entry],
+            })
+        seen[key] = entry
+
+    # Check for phrase overlaps (phrase contains a shorter correction's ASR)
+    asr_keys = {e["asr"].lower(): e for e in corrections}
+    for entry in corrections:
+        words = entry["asr"].lower().split()
+        if len(words) < 2:
+            continue
+        for word in words:
+            if word in asr_keys and asr_keys[word]["asr"].lower() != entry["asr"].lower():
+                conflicts.append({
+                    "type": "overlap",
+                    "message": (
+                        f"Phrase '{entry['asr']}' contains "
+                        f"word-level correction '{asr_keys[word]['asr']}'"
+                    ),
+                    "entries": [entry, asr_keys[word]],
+                })
+
+    return conflicts
+
+
 def filter_by_confidence(corrections: list[dict], min_level: str) -> list[dict]:
     """Filter corrections to min_level or above.
 
