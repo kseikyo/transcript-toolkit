@@ -1,6 +1,7 @@
 """Tests for lib.py — shared utilities."""
 
 import pytest
+import importlib
 import lib
 
 
@@ -192,3 +193,62 @@ def test_apply_redaction_skips_speaker_labels():
     # Speaker label preserved, content redacted
     assert "**John Smith:**" in result
     assert result.count("John Smith") == 1  # Only the speaker label remains
+
+
+# --- T6: Smarter context rules ---
+
+
+def test_evaluate_context_min_neighbor_count_fails():
+    """min_neighbor_count=2 with only 1 neighbor → False."""
+    rule = {
+        "strategy": "requires_neighbor",
+        "neighbors": ["AI", "model", "assistant"],
+        "min_neighbor_count": 2,
+    }
+    # Only 1 neighbor ("AI") in window
+    assert lib.evaluate_context(["the", "AI", "thing"], rule) is False
+
+
+def test_evaluate_context_min_neighbor_count_passes():
+    """min_neighbor_count=2 with 2 neighbors → True."""
+    rule = {
+        "strategy": "requires_neighbor",
+        "neighbors": ["AI", "model", "assistant"],
+        "min_neighbor_count": 2,
+    }
+    # 2 neighbors ("AI", "model") in window
+    assert lib.evaluate_context(["the", "AI", "model", "thing"], rule) is True
+
+
+def test_evaluate_context_default_min_neighbor_count():
+    """Without min_neighbor_count, default behavior (1 neighbor suffices)."""
+    rule = {
+        "strategy": "requires_neighbor",
+        "neighbors": ["AI"],
+    }
+    assert lib.evaluate_context(["the", "AI", "thing"], rule) is True
+
+
+def test_context_window_size_limits_reach():
+    """Per-correction window_size=1 limits context to immediate neighbors."""
+    corrections = [
+        {
+            "asr": "cloud",
+            "correct": "Claude",
+            "confidence": "high",
+            "context": {
+                "strategy": "requires_neighbor",
+                "neighbors": ["AI"],
+                "window_size": 1,
+            },
+        }
+    ]
+    # AI is 3 words away — outside window_size=1
+    text = "the cloud is great AI tool"
+    fix_transcript = importlib.import_module("fix-transcript")
+    result, replacements, skipped = fix_transcript.process_transcript(
+        text, corrections
+    )
+    # With window_size=1, "AI" is too far → skipped
+    assert len(skipped) == 1
+    assert "cloud" in result

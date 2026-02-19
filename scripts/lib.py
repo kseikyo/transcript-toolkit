@@ -335,14 +335,17 @@ def evaluate_context(window_words: list[str], context_rule: dict) -> bool:
 
     Strategies:
     - 'always' (default if no context): return True
-    - 'requires_neighbor': return True if ANY neighbor found in window
-      (case-insensitive)
+    - 'requires_neighbor': return True if enough neighbors found in window
     - 'exclude_neighbor': return True if NO exclude_neighbor found in window
-    - 'both': return True if ANY neighbor found AND NO exclude_neighbor found
+    - 'both': return True if enough neighbors AND NO exclude_neighbor found
+
+    Optional fields in context_rule:
+    - min_neighbor_count (int, default 1): minimum neighbors required
 
     Args:
         window_words: List of words in the context window
-        context_rule: Dict with keys: strategy, neighbors?, exclude_neighbors?
+        context_rule: Dict with keys: strategy, neighbors?, exclude_neighbors?,
+                      min_neighbor_count?
 
     Returns:
         True if replacement should proceed
@@ -357,11 +360,12 @@ def evaluate_context(window_words: list[str], context_rule: dict) -> bool:
         return True
 
     window_lower = [w.lower() for w in window_words]
+    min_count = context_rule.get("min_neighbor_count", 1)
 
-    has_neighbor = False
+    neighbor_count = 0
     if strategy in ("requires_neighbor", "both"):
         neighbors = context_rule.get("neighbors", [])
-        has_neighbor = any(n.lower() in window_lower for n in neighbors)
+        neighbor_count = sum(1 for n in neighbors if n.lower() in window_lower)
 
     has_exclude = False
     if strategy in ("exclude_neighbor", "both"):
@@ -369,11 +373,11 @@ def evaluate_context(window_words: list[str], context_rule: dict) -> bool:
         has_exclude = any(e.lower() in window_lower for e in excludes)
 
     if strategy == "requires_neighbor":
-        return has_neighbor
+        return neighbor_count >= min_count
     if strategy == "exclude_neighbor":
         return not has_exclude
     if strategy == "both":
-        return has_neighbor and not has_exclude
+        return neighbor_count >= min_count and not has_exclude
 
     return True
 

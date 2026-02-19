@@ -68,8 +68,12 @@ def process_transcript(
 
             for start, end, matched_text in matches:
                 word_idx = _find_word_index(tokens, start, end)
+                # Use per-correction window_size if specified in context rule
+                ws = (context_rule or {}).get("window_size", 10)
                 window = (
-                    lib.get_word_window(word_list, word_idx) if word_idx >= 0 else []
+                    lib.get_word_window(word_list, word_idx, window_size=ws)
+                    if word_idx >= 0
+                    else []
                 )
 
                 if context_rule is None or lib.evaluate_context(window, context_rule):
