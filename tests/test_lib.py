@@ -129,3 +129,21 @@ def test_detect_conflicts_clean():
     ]
     conflicts = lib.detect_conflicts(corrections)
     assert conflicts == []
+
+
+# --- T4: Filler word removal ---
+
+
+@pytest.mark.parametrize(
+    "text,fillers,expected",
+    [
+        ("I um think uh yes", ["um", "uh"], "I think yes"),
+        ("Um so basically", ["um"], "So basically"),
+        ("yes, um, no", ["um"], "yes, no"),
+        ("no fillers here", ["um"], "no fillers here"),
+        ("hello world", [], "hello world"),
+    ],
+)
+def test_remove_fillers(text, fillers, expected):
+    """Filler words removed, cleanup handled."""
+    assert lib.remove_fillers(text, fillers) == expected

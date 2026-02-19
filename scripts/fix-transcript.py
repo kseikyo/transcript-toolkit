@@ -275,6 +275,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Validate corrections for conflicts and exit",
     )
+    p.add_argument(
+        "--strip-fillers",
+        action="store_true",
+        help="Remove filler words defined in profile before correction",
+    )
     args = p.parse_args(argv)
 
     if args.out is None:
@@ -309,6 +314,12 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     text = Path(args.transcript).read_text(encoding="utf-8")
+
+    # Strip fillers before correction if requested
+    if args.strip_fillers and profile:
+        fillers = profile.get("fillers", [])
+        if fillers:
+            text = lib.remove_fillers(text, fillers)
 
     if args.review == "ai":
         _, _, skipped = process_transcript(text, corrections, args.min_confidence)

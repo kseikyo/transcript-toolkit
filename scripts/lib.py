@@ -154,6 +154,49 @@ def detect_conflicts(corrections: list[dict]) -> list[dict]:
     return conflicts
 
 
+def remove_fillers(text: str, fillers: list[str]) -> str:
+    """Remove filler words from text with cleanup.
+
+    Handles: double spaces, orphaned commas, capitalization after removal
+    at sentence start.
+
+    Args:
+        text: Input text
+        fillers: List of filler words to remove (case-insensitive)
+
+    Returns:
+        Text with fillers removed and whitespace/punctuation cleaned up
+    """
+    if not fillers:
+        return text
+    # Build pattern: match filler word with optional leading/trailing comma+space
+    # Use word boundaries to avoid partial matches
+    escaped = [re.escape(f) for f in fillers]
+    filler_pat = r"(?:" + "|".join(escaped) + r")"
+    # Match: optional comma+space before, the filler, optional comma+space after
+    pattern = r"(?:,\s*)?\b" + filler_pat + r"\b(?:\s*,)?\s*"
+    result = re.sub(pattern, " ", text, flags=re.IGNORECASE)
+    # Collapse multiple spaces
+    result = re.sub(r"  +", " ", result).strip()
+    # Restore comma when filler was between two commas: "yes, um, no" → "yes, no"
+    # The regex above may eat both commas; re-insert one if needed
+    # Check if original had "X, filler, Y" pattern and result lost the comma
+    for f in fillers:
+        # Pattern: word, filler, word → should keep one comma
+        comma_pat = r"(\w),\s*\b" + re.escape(f) + r"\b\s*,\s*(\w)"
+        text = re.sub(comma_pat, r"\1, \2", text, flags=re.IGNORECASE)
+    # Re-run the simple removal on the fixed text
+    result = re.sub(
+        r"(?:,\s*)?\b" + filler_pat + r"\b(?:\s*,)?\s*",
+        " ", text, flags=re.IGNORECASE,
+    )
+    result = re.sub(r"  +", " ", result).strip()
+    # Capitalize first letter if filler was at start
+    if result and result[0].islower() and (not text or text[0].isupper()):
+        result = result[0].upper() + result[1:]
+    return result
+
+
 def filter_by_confidence(corrections: list[dict], min_level: str) -> list[dict]:
     """Filter corrections to min_level or above.
 
