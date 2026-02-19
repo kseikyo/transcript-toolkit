@@ -280,6 +280,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Remove filler words defined in profile before correction",
     )
+    p.add_argument(
+        "--redact",
+        action="store_true",
+        help="Apply redaction rules from profile after correction",
+    )
     args = p.parse_args(argv)
 
     if args.out is None:
@@ -332,6 +337,12 @@ def main(argv: list[str] | None = None) -> None:
         corrections,
         args.min_confidence,
     )
+
+    # Apply redaction after corrections if requested
+    if args.redact and profile:
+        redaction_rules = profile.get("redaction")
+        if redaction_rules:
+            corrected = lib.apply_redaction(corrected, redaction_rules)
 
     if args.review == "human":
         interactive_review(skipped, corrected.split("\n"))

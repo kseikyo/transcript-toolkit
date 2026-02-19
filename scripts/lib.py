@@ -197,6 +197,51 @@ def remove_fillers(text: str, fillers: list[str]) -> str:
     return result
 
 
+def apply_redaction(text: str, rules: dict) -> str:
+    """Apply regex-based redaction rules to text.
+
+    Skips speaker labels (bold name before colon) to preserve attribution.
+    Compiles regexes once for efficiency.
+
+    Args:
+        text: Input text
+        rules: Dict with "patterns" (list of {regex, label}) and "placeholder"
+
+    Returns:
+        Text with matched patterns replaced by placeholder
+    """
+    patterns = rules.get("patterns", [])
+    if not patterns:
+        return text
+
+    placeholder_template = rules.get("placeholder", "[REDACTED:{label}]")
+    # Compile all patterns once
+    compiled = []
+    for p in patterns:
+        compiled.append((re.compile(p["regex"]), p["label"]))
+
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        # Detect speaker label region to skip it
+        # Matches: **Name:** or **Name**: patterns
+        speaker_end = 0
+        sm = re.match(r"\*\*(.+?):\*\*\s*", line) or re.match(
+            r"\*\*(.+?)\*\*\s*:\s*", line
+        )
+        if sm:
+            speaker_end = sm.end()
+
+        # Apply redaction only to content after speaker label
+        prefix = line[:speaker_end]
+        content = line[speaker_end:]
+        for regex, label in compiled:
+            repl = placeholder_template.replace("{label}", label)
+            content = regex.sub(repl, content)
+        lines[i] = prefix + content
+
+    return "\n".join(lines)
+
+
 def filter_by_confidence(corrections: list[dict], min_level: str) -> list[dict]:
     """Filter corrections to min_level or above.
 

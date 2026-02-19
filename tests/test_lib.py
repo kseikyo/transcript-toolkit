@@ -147,3 +147,48 @@ def test_detect_conflicts_clean():
 def test_remove_fillers(text, fillers, expected):
     """Filler words removed, cleanup handled."""
     assert lib.remove_fillers(text, fillers) == expected
+
+
+# --- T5: Privacy/redaction ---
+
+
+def test_apply_redaction_email():
+    """Email pattern redacts correctly."""
+    rules = {
+        "patterns": [{"regex": r"\b\S+@\S+\.\S+\b", "label": "EMAIL"}],
+        "placeholder": "[REDACTED:{label}]",
+    }
+    result = lib.apply_redaction("email me at john@acme.com please", rules)
+    assert "[REDACTED:EMAIL]" in result
+    assert "john@acme.com" not in result
+
+
+def test_apply_redaction_phone():
+    """Phone pattern redacts correctly."""
+    rules = {
+        "patterns": [{"regex": r"\b\d{3}[-.]?\d{4}\b", "label": "PHONE"}],
+        "placeholder": "[REDACTED:{label}]",
+    }
+    result = lib.apply_redaction("call 555-1234 now", rules)
+    assert "[REDACTED:PHONE]" in result
+    assert "555-1234" not in result
+
+
+def test_apply_redaction_empty_patterns():
+    """Empty patterns list → no-op."""
+    rules = {"patterns": [], "placeholder": "[REDACTED:{label}]"}
+    text = "nothing to redact"
+    assert lib.apply_redaction(text, rules) == text
+
+
+def test_apply_redaction_skips_speaker_labels():
+    """Redaction must not touch speaker labels (bold name before colon)."""
+    rules = {
+        "patterns": [{"regex": r"\b[A-Z][a-z]+ [A-Z][a-z]+\b", "label": "NAME"}],
+        "placeholder": "[REDACTED:{label}]",
+    }
+    text = "**John Smith:** hello John Smith"
+    result = lib.apply_redaction(text, rules)
+    # Speaker label preserved, content redacted
+    assert "**John Smith:**" in result
+    assert result.count("John Smith") == 1  # Only the speaker label remains
