@@ -252,3 +252,56 @@ def test_context_window_size_limits_reach():
     # With window_size=1, "AI" is too far → skipped
     assert len(skipped) == 1
     assert "cloud" in result
+
+
+# --- T7: Fuzzy matching suggestions ---
+
+
+@pytest.mark.parametrize(
+    "s1,s2,min_score",
+    [
+        ("Claude", "Cloud", 0.85),
+        ("Claudinho", "Claudio", 0.85),
+    ],
+)
+def test_jaro_winkler_similar(s1, s2, min_score):
+    """Similar strings score above threshold."""
+    score = lib.jaro_winkler(s1, s2)
+    assert score >= min_score, f"jaro_winkler({s1!r}, {s2!r}) = {score:.3f} < {min_score}"
+
+
+def test_jaro_winkler_dissimilar():
+    """Dissimilar strings score low."""
+    score = lib.jaro_winkler("Python", "Figma")
+    assert score < 0.5
+
+
+def test_jaro_winkler_identical():
+    """Identical strings score 1.0."""
+    assert lib.jaro_winkler("hello", "hello") == 1.0
+
+
+def test_jaro_winkler_empty():
+    """Empty strings handled gracefully."""
+    assert lib.jaro_winkler("", "") == 1.0
+    assert lib.jaro_winkler("hello", "") == 0.0
+
+
+def test_find_fuzzy_suggestions_match():
+    """Fuzzy suggestion found for similar word."""
+    corrections = [
+        {"asr": "cloud", "correct": "Claude", "confidence": "high"},
+        {"asr": "github", "correct": "GitHub", "confidence": "high"},
+    ]
+    suggestions = lib.find_fuzzy_suggestions("claud", corrections, threshold=0.80)
+    assert len(suggestions) >= 1
+    assert suggestions[0]["asr"] == "cloud"
+
+
+def test_find_fuzzy_suggestions_no_match():
+    """No suggestion for very different word."""
+    corrections = [
+        {"asr": "github", "correct": "GitHub", "confidence": "high"},
+    ]
+    suggestions = lib.find_fuzzy_suggestions("banana", corrections, threshold=0.80)
+    assert suggestions == []

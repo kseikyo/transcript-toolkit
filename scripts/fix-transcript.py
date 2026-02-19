@@ -289,6 +289,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Apply redaction rules from profile after correction",
     )
+    p.add_argument(
+        "--suggest",
+        action="store_true",
+        help="Run fuzzy matching on unmatched words and log suggestions",
+    )
     args = p.parse_args(argv)
 
     if args.out is None:
@@ -342,6 +347,29 @@ def main(argv: list[str] | None = None) -> None:
         args.min_confidence,
     )
 
+    # Fuzzy suggestions on unmatched words
+    suggestions_log: list[dict] = []
+    if args.suggest:
+        # Collect words that were matched (replaced or skipped)
+        matched_words = {e["original"].lower() for e in replacements + skipped}
+        # Check each unique word in the corrected text
+        seen_words: set[str] = set()
+        for word_match in re.finditer(r"\b[a-zA-Z]{3,}\b", corrected):
+            word = word_match.group()
+            wl = word.lower()
+            if wl in seen_words or wl in matched_words:
+                continue
+            seen_words.add(wl)
+            suggestions = lib.find_fuzzy_suggestions(word, corrections)
+            for s in suggestions:
+                suggestions_log.append({
+                    "original": word,
+                    "suggested_asr": s["asr"],
+                    "suggested_correct": s["correct"],
+                    "score": s["score"],
+                    "action": "suggested",
+                })
+
     # Apply redaction after corrections if requested
     if args.redact and profile:
         redaction_rules = profile.get("redaction")
@@ -354,7 +382,7 @@ def main(argv: list[str] | None = None) -> None:
     if not args.dry_run:
         Path(args.out).write_text(corrected, encoding="utf-8")
 
-    write_audit_log(replacements, skipped, args.log)
+    write_audit_log(replacements + suggestions_log, skipped, args.log)
 
 
 if __name__ == "__main__":

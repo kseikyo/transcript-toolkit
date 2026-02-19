@@ -411,3 +411,119 @@ def find_matches(text: str, asr_pattern: str) -> list[tuple[int, int, str]]:
         (m.start(), m.end(), m.group())
         for m in re.finditer(pattern, text, re.IGNORECASE | re.UNICODE)
     ]
+
+
+def jaro_winkler(s1: str, s2: str, prefix_weight: float = 0.1) -> float:
+    """Jaro-Winkler string similarity (pure Python, stdlib only).
+
+    Weights early-string matches more heavily via a prefix bonus.
+    Returns 0.0 (no similarity) to 1.0 (identical).
+
+    Args:
+        s1: First string
+        s2: Second string
+        prefix_weight: Prefix scaling factor (default 0.1)
+
+    Returns:
+        Similarity score between 0.0 and 1.0
+    """
+    if s1 == s2:
+        return 1.0
+    if not s1 or not s2:
+        return 0.0
+
+    s1_lower = s1.lower()
+    s2_lower = s2.lower()
+
+    len1, len2 = len(s1_lower), len(s2_lower)
+    match_distance = max(len1, len2) // 2 - 1
+    if match_distance < 0:
+        match_distance = 0
+
+    s1_matches = [False] * len1
+    s2_matches = [False] * len2
+
+    matches = 0
+    transpositions = 0
+
+    for i in range(len1):
+        start = max(0, i - match_distance)
+        end = min(i + match_distance + 1, len2)
+        for j in range(start, end):
+            if s2_matches[j] or s1_lower[i] != s2_lower[j]:
+                continue
+            s1_matches[i] = True
+            s2_matches[j] = True
+            matches += 1
+            break
+
+    if matches == 0:
+        return 0.0
+
+    k = 0
+    for i in range(len1):
+        if not s1_matches[i]:
+            continue
+        while not s2_matches[k]:
+            k += 1
+        if s1_lower[i] != s2_lower[k]:
+            transpositions += 1
+        k += 1
+
+    jaro = (
+        matches / len1 + matches / len2 + (matches - transpositions / 2) / matches
+    ) / 3
+
+    # Winkler prefix bonus (up to 4 chars)
+    prefix_len = 0
+    for i in range(min(4, len1, len2)):
+        if s1_lower[i] == s2_lower[i]:
+            prefix_len += 1
+        else:
+            break
+
+    return jaro + prefix_len * prefix_weight * (1 - jaro)
+
+
+def find_fuzzy_suggestions(
+    word: str,
+    corrections: list[dict],
+    threshold: float = 0.85,
+) -> list[dict]:
+    """Find corrections with ASR patterns similar to the given word.
+
+    Uses both difflib.SequenceMatcher and Jaro-Winkler, taking the max score.
+    Returns suggestions sorted by score descending.
+
+    Args:
+        word: Word to find suggestions for
+        corrections: List of correction entries
+        threshold: Minimum similarity score (default 0.85)
+
+    Returns:
+        List of dicts with keys: asr, correct, score
+    """
+    from difflib import SequenceMatcher
+
+    suggestions: list[dict] = []
+    word_lower = word.lower()
+
+    for corr in corrections:
+        asr = corr["asr"]
+        asr_lower = asr.lower()
+        # Skip exact matches — those are handled by dictionary matching
+        if asr_lower == word_lower:
+            continue
+        # Compute both scores, take the max
+        sm_score = SequenceMatcher(None, word_lower, asr_lower).ratio()
+        jw_score = jaro_winkler(word, asr)
+        score = max(sm_score, jw_score)
+        if score >= threshold:
+            suggestions.append({
+                "asr": asr,
+                "correct": corr["correct"],
+                "score": round(score, 3),
+            })
+
+    suggestions.sort(key=lambda s: -s["score"])
+    return suggestions
