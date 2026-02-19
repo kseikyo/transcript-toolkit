@@ -268,3 +268,41 @@ def test_multi_skip_flag_positions():
     assert '[unclear: "fuzzy"' in result
     # Both flags present, neither corrupted
     assert result.count("[unclear:") == 2
+
+
+# --- Test 14: Flag position adjusts after replacement changes text length ---
+
+
+def test_flag_position_after_replacement_shift():
+    """Flag insertion must adjust positions when prior replacements change text length.
+
+    Bug: skipped entries store char_end from the ORIGINAL line, but flags are
+    inserted into the MODIFIED line. If a replacement before the skip changed
+    text length, the flag lands at the wrong position.
+    """
+    corrections = [
+        # This WILL be replaced (no context rule) — grows "foo" (3) to "foobar" (6), +3 chars
+        {"asr": "foo", "correct": "foobar", "confidence": "high"},
+        # This will be SKIPPED (context rule fails) — flag should appear after "baz"
+        {
+            "asr": "baz",
+            "correct": "BAZ_FIXED",
+            "confidence": "high",
+            "context": {"strategy": "requires_neighbor", "neighbors": ["missing_word"]},
+        },
+    ]
+    text = "the foo and baz here"
+    result, replacements, skipped = process_transcript(text, corrections)
+    assert len(replacements) == 1  # foo → foobar
+    assert len(skipped) == 1  # baz skipped
+    # Flag must appear AFTER "baz", not before it or mid-word
+    assert "foobar" in result
+    assert "baz" in result
+    # The flag must not split "baz" or appear before it
+    assert '[unclear: "baz"' in result
+    # Verify flag is AFTER baz, not before: "baz [unclear:" not "[unclear:...baz"
+    baz_pos = result.index("baz")
+    flag_pos = result.index("[unclear:")
+    assert flag_pos > baz_pos, (
+        f"Flag at {flag_pos} should be after 'baz' at {baz_pos}. Got: {result!r}"
+    )

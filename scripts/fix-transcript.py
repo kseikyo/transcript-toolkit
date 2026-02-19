@@ -47,6 +47,8 @@ def process_transcript(
     lines = text.split("\n")
     replacements_log: list[dict] = []
     skipped_log: list[dict] = []
+    # Track replacement deltas per line for flag position adjustment
+    replacements_by_line: dict[int, list[tuple[int, int, int]]] = {}
 
     for line_idx in range(len(lines)):
         line = lines[line_idx]
@@ -97,7 +99,10 @@ def process_transcript(
 
         # Apply right-to-left to preserve character offsets
         selected.sort(key=lambda x: -x[0])
+        line_deltas: list[tuple[int, int, int]] = []
         for start, end, replacement, matched_text, corr in selected:
+            delta = len(replacement) - (end - start)
+            line_deltas.append((start, end, delta))
             line = line[:start] + replacement + line[end:]
             replacements_log.append(
                 {
@@ -109,6 +114,9 @@ def process_transcript(
                 }
             )
 
+        if line_deltas:
+            replacements_by_line[line_idx + 1] = line_deltas
+
         lines[line_idx] = line
 
     skipped_by_line: dict[int, list[dict]] = {}
@@ -117,10 +125,15 @@ def process_transcript(
 
     for ln in sorted(skipped_by_line):
         line = lines[ln - 1]
-        # Sort by char_end descending so insertions don't shift earlier positions
+        # Adjust skip positions for replacement-induced shifts
+        deltas = replacements_by_line.get(ln, [])
         entries = sorted(skipped_by_line[ln], key=lambda e: -e.get("char_end", 0))
         for entry in entries:
             pos = entry["char_end"]
+            # Shift pos by cumulative delta of all replacements before this position
+            for repl_start, _repl_end, delta in deltas:
+                if repl_start < pos:
+                    pos += delta
             flag = f' [unclear: "{entry["original"]}" \u2192 ?]'
             line = line[:pos] + flag + line[pos:]
             entry["action"] = "flagged"
